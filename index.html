@@ -92,30 +92,20 @@
         import { getFirestore, collection, query, getDocs, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // ====================================================================
-        // IMPORTANT: Paste your Firebase config here
-        // ====================================================================
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-        const firestoreCollectionName = "YOUR_COLLECTION_NAME"; // e.g., "students"
+        // IMPORTANT: PASTE YOUR FIREBASE CONFIGURATION AND COLLECTION NAME HERE
         // ====================================================================
 
-        const firebaseConfig = {
-        apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
-        authDomain: "student-flashcards.firebaseapp.com",
-        projectId: "student-flashcards",
-        storageBucket: "student-flashcards.firebasestorage.app",
-        messagingSenderId: "737854832974",
-        appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
-        };
-
-        const firestoreCollectionName = "artifacts"; // e.g., "students"
-
+            const firebaseConfig = {
+            apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
+            authDomain: "student-flashcards.firebaseapp.com",
+            projectId: "student-flashcards",
+            storageBucket: "student-flashcards.firebasestorage.app",
+            messagingSenderId: "737854832974",
+            appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
+            };
+        
+        const firestoreCollectionName = "artifacts; // e.g., "students"
+        
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const flashcardElement = document.getElementById('flashcard');
@@ -124,6 +114,7 @@
         const periodSelect = document.getElementById('period-select');
         let filteredStudents = [];
         let currentIndex = 0;
+
 
         const updateFlashcard = () => {
             if (filteredStudents.length === 0) {
