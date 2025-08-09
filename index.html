@@ -132,10 +132,22 @@
             prevButton.style.display = 'inline-flex';
 
             const student = filteredStudents[currentIndex];
-            document.getElementById('student-photo').src = student.photoUrl;
+
+            // ====================================================================
+            // The key update: Check for the 'photo' field and handle base64 data
+            // ====================================================================
+            if (student.photo) {
+                document.getElementById('student-photo').src = student.photo; // Use the base64 string directly
+            } else if (student.photoUrl) {
+                document.getElementById('student-photo').src = student.photoUrl; // Fallback to photoUrl
+            } else {
+                document.getElementById('student-photo').src = "https://placehold.co/400x400/cccccc/000000?text=No+Photo";
+            }
+            // ====================================================================
+
             document.getElementById('student-name').textContent = student.name;
-            document.getElementById('fun-fact').textContent = student.funFact;
-            document.getElementById('experience').textContent = student.experience;
+            document.getElementById('fun-fact').textContent = student.funFacts || ""; // Added fallback for potential inconsistencies
+            document.getElementById('experience').textContent = student.experience || ""; // Added fallback
         };
 
         const fetchStudents = async (period) => {
@@ -168,10 +180,8 @@
                     }
                     
                     if (periodValue !== null) {
-                        // The crucial change: query with the string value
                         q = query(studentsCollection, where("period", "==", periodValue));
                     } else {
-                        // If for some reason the value is not valid, query for nothing.
                         q = query(collection(db, "a_non_existent_collection_to_return_nothing"));
                     }
                 }
@@ -179,7 +189,6 @@
                 const querySnapshot = await getDocs(q);
                 filteredStudents = querySnapshot.docs.map(doc => doc.data());
                 
-                // This debugging line will confirm if data is being fetched
                 console.log(`Found ${filteredStudents.length} students for period: ${period}`);
                 console.log(filteredStudents);
                 
@@ -189,7 +198,6 @@
 
             } catch (e) {
                 console.error("Error fetching students: ", e);
-                // Display error message to user
                 document.getElementById('student-photo').src = "https://placehold.co/400x400/ff0000/ffffff?text=Error";
                 document.getElementById('student-name').textContent = "Error loading data.";
                 document.getElementById('fun-fact').textContent = "Please check your Firebase config and collection name. Also, ensure your Firebase security rules allow read access.";
