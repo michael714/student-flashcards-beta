@@ -102,17 +102,19 @@
             messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
             appId: "YOUR_APP_ID"
         };
-        const firestoreCollectionName = "artifacts"; // e.g., "students"
+        const firestoreCollectionName = "YOUR_COLLECTION_NAME"; // e.g., "students"
         // ====================================================================
 
-const firebaseConfig = {
-  apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
-  authDomain: "student-flashcards.firebaseapp.com",
-  projectId: "student-flashcards",
-  storageBucket: "student-flashcards.firebasestorage.app",
-  messagingSenderId: "737854832974",
-  appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
-};
+        const firebaseConfig = {
+        apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
+        authDomain: "student-flashcards.firebaseapp.com",
+        projectId: "student-flashcards",
+        storageBucket: "student-flashcards.firebasestorage.app",
+        messagingSenderId: "737854832974",
+        appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
+        };
+
+        const firestoreCollectionName = "artifacts"; // e.g., "students"
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
