@@ -146,10 +146,10 @@
                 if (period === 'All') {
                     q = query(studentsCollection);
                 } else {
-                    // Extract the number from the string "Period 1"
-                    const periodNumber = parseInt(period.split(' ')[1], 10);
-                    // Use the number in the query
-                    q = query(studentsCollection, where("period", "==", periodNumber));
+                    // Extract the number from the string "Period 1" as a STRING.
+                    const periodString = period.split(' ')[1];
+                    // Use the string in the query.
+                    q = query(studentsCollection, where("period", "==", periodString));
                 }
                 
                 const querySnapshot = await getDocs(q);
