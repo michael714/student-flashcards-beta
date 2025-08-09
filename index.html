@@ -104,7 +104,7 @@
         appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
         };
 
-        const firestoreCollectionName = "artifacts"; // e.g., "students"
+        const firestoreCollectionName = "artifacts/student-entry-app-2025/public"; // e.g., "students"
         // ====================================================================
 
         const app = initializeApp(firebaseConfig);
@@ -154,6 +154,11 @@
                 const querySnapshot = await getDocs(q);
                 filteredStudents = querySnapshot.docs.map(doc => doc.data());
                 
+                // === This is the new debugging line ===
+                console.log(`Found ${filteredStudents.length} students for period: ${period}`);
+                console.log(filteredStudents);
+                // =====================================
+
                 currentIndex = 0;
                 flashcardElement.classList.remove('is-flipped');
                 updateFlashcard();
