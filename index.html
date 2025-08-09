@@ -92,19 +92,17 @@
         import { getFirestore, collection, query, getDocs, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // ====================================================================
-        // IMPORTANT: PASTE YOUR FIREBASE CONFIGURATION AND COLLECTION NAME HERE
+        // IMPORTANT: YOUR FIREBASE CONFIGURATION AND COLLECTION NAME
         // ====================================================================
-
         const firebaseConfig = {
-        apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
-        authDomain: "student-flashcards.firebaseapp.com",
-        projectId: "student-flashcards",
-        storageBucket: "student-flashcards.firebasestorage.app",
-        messagingSenderId: "737854832974",
-        appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
+            apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
+            authDomain: "student-flashcards.firebaseapp.com",
+            projectId: "student-flashcards",
+            storageBucket: "student-flashcards.firebasestorage.app",
+            messagingSenderId: "737854832974",
+            appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
         };
-
-        const firestoreCollectionName = "artifacts/student-entry-app-2025/public"; // e.g., "students"
+        const firestoreCollectionName = "artifacts/student-entry-app-2025/public";
         // ====================================================================
 
         const app = initializeApp(firebaseConfig);
@@ -148,17 +146,19 @@
                 if (period === 'All') {
                     q = query(studentsCollection);
                 } else {
-                    q = query(studentsCollection, where("period", "==", period));
+                    // Extract the number from the string "Period 1"
+                    const periodNumber = parseInt(period.split(' ')[1], 10);
+                    // Use the number in the query
+                    q = query(studentsCollection, where("period", "==", periodNumber));
                 }
                 
                 const querySnapshot = await getDocs(q);
                 filteredStudents = querySnapshot.docs.map(doc => doc.data());
                 
-                // === This is the new debugging line ===
+                // This debugging line will confirm if data is being fetched
                 console.log(`Found ${filteredStudents.length} students for period: ${period}`);
                 console.log(filteredStudents);
-                // =====================================
-
+                
                 currentIndex = 0;
                 flashcardElement.classList.remove('is-flipped');
                 updateFlashcard();
