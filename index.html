@@ -3,20 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Flashcards</title>
-    <!-- Tailwind CSS for styling -->
+    <title>Student Flashcards - v1.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* CSS for the card flip animation */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Styles for the 3D card flip effect */
         .card-container {
             perspective: 1000px;
         }
         .card {
             width: 100%;
-            height: 100%;
+            height: 400px;
             position: relative;
             transform-style: preserve-3d;
             transition: transform 0.6s;
+            cursor: pointer;
         }
         .card.is-flipped {
             transform: rotateY(180deg);
@@ -27,236 +33,197 @@
             height: 100%;
             backface-visibility: hidden;
             display: flex;
-            align-items: center;
+            flex-direction: column;
             justify-content: center;
+            align-items: center;
             border-radius: 1rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        .card-face.card-back {
+        .card-front {
+            background-color: #f3f4f6; /* gray-200 */
+        }
+        .card-back {
+            background-color: #ffffff;
             transform: rotateY(180deg);
+            padding: 2rem;
         }
     </style>
 </head>
-<body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4 font-sans text-gray-800">
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
 
-    <div class="w-full max-w-2xl text-center mb-8">
-        <h1 class="text-4xl font-bold mb-2">Student Flashcards</h1>
+<div class="w-full max-w-md mx-auto">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">Student Flashcards</h1>
+        <p class="text-gray-500">Version 1.0</p>
     </div>
 
-    <!-- Period filter dropdown -->
-    <div class="w-full max-w-sm mb-6">
-        <label for="period-select" class="block text-sm font-medium text-gray-700 mb-1">
-            Select Period
-        </label>
-        <select id="period-select" class="block w-full rounded-md border-gray-300 shadow-sm p-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="All">All</option>
-            <option value="Period 1">Period 1</option>
-            <option value="Period 2">Period 2</option>
-            <option value="Period 3">Period 3</option>
-            <option value="Period 4">Period 4</option>
-            <option value="Period 6">Period 6</option>
+    <!-- Controls -->
+    <div class="flex justify-between items-center mb-4 bg-white p-4 rounded-lg shadow-sm">
+        <label for="period-filter" class="font-medium text-gray-700">Filter by Period:</label>
+        <select id="period-filter" class="p-2 border border-gray-300 rounded-lg">
+            <option value="All">All Periods</option>
+            <option value="1">Period 1</option>
+            <option value="2">Period 2</option>
+            <option value="3">Period 3</option>
+            <option value="4">Period 4</option>
+            <option value="6">Period 6</option>
         </select>
     </div>
 
-    <!-- Flashcard UI -->
-    <div id="flashcard-container" class="w-full max-w-sm card-container">
-        <div id="flashcard" class="card cursor-pointer">
-            <!-- Card Front -->
-            <div id="card-front" class="card-face bg-white">
-                <img id="student-photo" src="https://placehold.co/400x400/cccccc/000000?text=Loading..." alt="Student Photo" class="w-full h-full object-cover rounded-xl">
-            </div>
-            <!-- Card Back -->
-            <div id="card-back" class="card-face card-back bg-white p-6 flex-col text-center">
-                <h2 id="student-name" class="text-3xl font-bold mb-4"></h2>
-                <div class="text-lg space-y-3">
-                    <p><strong>Fun Fact:</strong> <span id="fun-fact"></span></p>
-                    <p><strong>Experience:</strong> <span id="experience"></span></p>
+    <!-- Flashcard Area -->
+    <div id="flashcard-area" class="mb-4">
+        <div id="no-students-message" class="text-center p-8 bg-white rounded-lg shadow-sm hidden">
+            <p class="text-gray-600">No students found for this period. Try selecting another!</p>
+        </div>
+        <div class="card-container">
+            <div id="card" class="card">
+                <!-- Card Front (Photo) -->
+                <div class="card-face card-front">
+                    <img id="student-photo" src="" class="w-full h-full object-cover rounded-xl" alt="Student Photo">
+                </div>
+                <!-- Card Back (Details) -->
+                <div class="card-face card-back">
+                    <h3 id="student-name" class="text-2xl font-bold text-gray-800 mb-2"></h3>
+                    <p class="text-sm text-gray-500 mb-4" id="student-class"></p>
+                    <div class="text-left w-full">
+                        <strong class="text-gray-700">Fun Fact:</strong>
+                        <p id="student-fun-fact" class="text-gray-600 mb-3"></p>
+                        <strong id="experience-title" class="text-gray-700">Experience:</strong>
+                        <p id="student-experience" class="text-gray-600"></p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Navigation buttons -->
-    <div class="flex justify-between w-full max-w-sm mt-8">
-        <button id="prev-btn" class="px-6 py-3 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-200 transition-colors duration-200">
-            Previous
-        </button>
-        <button id="next-btn" class="px-6 py-3 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-200 transition-colors duration-200">
-            Next
-        </button>
+    <!-- Navigation -->
+    <div class="flex justify-between items-center">
+        <button id="prev-btn" class="bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-600 transition-colors">Previous</button>
+        <p id="card-counter" class="text-gray-600 font-medium">0 / 0</p>
+        <button id="next-btn" class="bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-600 transition-colors">Next</button>
     </div>
+</div>
 
-    <!-- Firebase SDK Imports -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, query, getDocs, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+<script>
+    // --- IMPORTANT: PASTE YOUR FIREBASE CONFIGURATION HERE ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
+        authDomain: "student-flashcards.firebaseapp.com",
+        projectId: "student-flashcards",
+        storageBucket: "student-flashcards.appspot.com",
+        messagingSenderId: "737854832974",
+        appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
+    };
+
+    // --- Name of your collection in Firestore ---
+    const firestoreCollectionName = "artifacts/student-entry-app-2025/public";
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Global state
+    let allStudents = [];
+    let filteredStudents = [];
+    let currentIndex = 0;
+
+    // DOM Elements
+    const periodFilter = document.getElementById('period-filter');
+    const card = document.getElementById('card');
+    const cardCounter = document.getElementById('card-counter');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const noStudentsMessage = document.getElementById('no-students-message');
+    const flashcardArea = document.getElementById('flashcard-area');
+    const cardContainer = document.querySelector('.card-container');
+
+    // --- Fetch Students from Firestore ---
+    async function fetchStudents() {
+        try {
+            const snapshot = await db.collection(firestoreCollectionName).orderBy("timestamp", "desc").get();
+            allStudents = snapshot.docs.map(doc => doc.data());
+            console.log(`Found ${allStudents.length} students in the database.`);
+            filterAndDisplayStudents();
+        } catch (error) {
+            console.error("Error fetching students: ", error);
+            noStudentsMessage.textContent = "Error loading students. Check console.";
+            noStudentsMessage.classList.remove('hidden');
+            cardContainer.classList.add('hidden');
+        }
+    }
+
+    // --- Filter and Display Logic ---
+    function filterAndDisplayStudents() {
+        const selectedPeriod = periodFilter.value;
+        if (selectedPeriod === 'All') {
+            filteredStudents = [...allStudents];
+        } else {
+            filteredStudents = allStudents.filter(student => student.period === selectedPeriod);
+        }
         
-        // ====================================================================
-        // IMPORTANT: YOUR FIREBASE CONFIGURATION AND COLLECTION NAME
-        // ====================================================================
-        const firebaseConfig = {
-            apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
-            authDomain: "student-flashcards.firebaseapp.com",
-            projectId: "student-flashcards",
-            storageBucket: "student-flashcards.firebasestorage.app",
-            messagingSenderId: "737854832974",
-            appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
-        };
-        const firestoreCollectionName = "/artifacts/student-entry-app-2025/public/data/student-profiles";
-        // ====================================================================
+        currentIndex = 0;
+        updateDisplay();
+    }
+    
+    // --- Update UI ---
+    function updateDisplay() {
+        // Un-flip the card for the new student
+        if (card.classList.contains('is-flipped')) {
+            card.classList.remove('is-flipped');
+        }
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const flashcardElement = document.getElementById('flashcard');
-        const nextButton = document.getElementById('next-btn');
-        const prevButton = document.getElementById('prev-btn');
-        const periodSelect = document.getElementById('period-select');
-        let filteredStudents = [];
-        let currentIndex = 0;
+        if (filteredStudents.length === 0) {
+            noStudentsMessage.classList.remove('hidden');
+            cardContainer.classList.add('hidden');
+            cardCounter.textContent = '0 / 0';
+            return;
+        }
 
-        const updateFlashcard = async () => {
-            const photoElement = document.getElementById('student-photo');
-            const nameElement = document.getElementById('student-name');
-            const funFactElement = document.getElementById('fun-fact');
-            const experienceElement = document.getElementById('experience');
+        noStudentsMessage.classList.add('hidden');
+        cardContainer.classList.remove('hidden');
 
-            // Revoke previous object URL to prevent memory leaks
-            if (photoElement.src.startsWith('blob:')) {
-                URL.revokeObjectURL(photoElement.src);
-            }
+        const student = filteredStudents[currentIndex];
+        
+        // Update card content
+        document.getElementById('student-photo').src = student.photo;
+        document.getElementById('student-name').textContent = student.preferredName || student.givenName;
+        document.getElementById('student-class').textContent = `Period ${student.period} - ${student.className}`;
+        document.getElementById('student-fun-fact').textContent = student.funFact;
+        document.getElementById('student-experience').textContent = student.experience;
 
-            if (filteredStudents.length === 0) {
-                photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=No+Students+Found";
-                nameElement.textContent = "No students in this period.";
-                funFactElement.textContent = "";
-                experienceElement.textContent = "";
-                nextButton.style.display = 'none';
-                prevButton.style.display = 'none';
-                return;
-            }
+        // Update experience title
+        const experienceTitle = document.getElementById('experience-title');
+        if (student.className === 'Computer Programming') {
+            experienceTitle.textContent = "Programming Experience:";
+        } else {
+            experienceTitle.textContent = "Math Experience:";
+        }
 
-            nextButton.style.display = 'inline-flex';
-            prevButton.style.display = 'inline-flex';
+        // Update counter
+        cardCounter.textContent = `${currentIndex + 1} / ${filteredStudents.length}`;
+    }
 
-            const student = filteredStudents[currentIndex];
-            
-            // Handle inconsistent name fields
-            nameElement.textContent = student.name || student.preferredName || "Unknown Name";
-            funFactElement.textContent = student.funFacts || student.funFact || "N/A";
-            experienceElement.textContent = student.experience || "N/A";
+    // --- Event Listeners ---
+    periodFilter.addEventListener('change', filterAndDisplayStudents);
+    card.addEventListener('click', () => card.classList.toggle('is-flipped'));
 
-            // Use fetch to handle base64 data more reliably
-            if (student.photo && student.photo.startsWith('data:')) {
-                photoElement.src = "https://placehold.co/400x400/eeeeee/333333?text=Loading..."; // Set a loading placeholder
-                try {
-                    // Use fetch to get the blob from the data URL
-                    const response = await fetch(student.photo);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    const blob = await response.blob();
-                    photoElement.src = URL.createObjectURL(blob);
-                    photoElement.onerror = () => {
-                        console.error("Blob URL failed to load. The image data might be corrupt.");
-                        photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=Corrupt+Image";
-                    };
-                } catch (e) {
-                    console.error("Failed to process base64 image data:", e);
-                    photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=Invalid+Data";
-                }
-            } else if (student.photoUrl) {
-                photoElement.src = student.photoUrl;
-                photoElement.onerror = () => {
-                    console.error("External image URL failed to load.");
-                    photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=No+Photo";
-                };
-            } else {
-                photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=No+Photo";
-            }
-        };
+    nextBtn.addEventListener('click', () => {
+        if (filteredStudents.length > 0) {
+            currentIndex = (currentIndex + 1) % filteredStudents.length;
+            updateDisplay();
+        }
+    });
 
-        const fetchStudents = async (period) => {
-            try {
-                const studentsCollection = collection(db, firestoreCollectionName);
-                let q;
-                if (period === 'All') {
-                    q = query(studentsCollection);
-                } else {
-                    let periodValue;
-                    switch(period) {
-                        case 'Period 1': periodValue = "1"; break;
-                        case 'Period 2': periodValue = "2"; break;
-                        case 'Period 3': periodValue = "3"; break;
-                        case 'Period 4': periodValue = "4"; break;
-                        case 'Period 6': periodValue = "6"; break;
-                        default: periodValue = null;
-                    }
-                    
-                    if (periodValue !== null) {
-                        q = query(studentsCollection, where("period", "==", periodValue));
-                    } else {
-                        q = query(collection(db, "a_non_existent_collection_to_return_nothing"));
-                    }
-                }
-                
-                const querySnapshot = await getDocs(q);
-                filteredStudents = querySnapshot.docs.map(doc => doc.data());
-                
-                console.log(`Found ${filteredStudents.length} students for period: ${period}`);
-                console.log(filteredStudents);
-                
-                currentIndex = 0;
-                flashcardElement.classList.remove('is-flipped');
-                updateFlashcard();
+    prevBtn.addEventListener('click', () => {
+        if (filteredStudents.length > 0) {
+            currentIndex = (currentIndex - 1 + filteredStudents.length) % filteredStudents.length;
+            updateDisplay();
+        }
+    });
 
-            } catch (e) {
-                console.error("Error fetching students: ", e);
-                document.getElementById('student-photo').src = "https://placehold.co/400x400/ff0000/ffffff?text=Error";
-                document.getElementById('student-name').textContent = "Error loading data.";
-                document.getElementById('fun-fact').textContent = "Please check your Firebase config and collection name. Also, ensure your Firebase security rules allow read access.";
-                document.getElementById('experience').textContent = "";
-                nextButton.style.display = 'none';
-                prevButton.style.display = 'none';
-            }
-        };
+    // --- Initial Load ---
+    fetchStudents();
 
-        // Event listeners
-        flashcardElement.addEventListener('click', () => {
-            if (filteredStudents.length > 0) {
-                flashcardElement.classList.toggle('is-flipped');
-            }
-        });
-
-        nextButton.addEventListener('click', (event) => {
-            event.stopPropagation();
-            if (filteredStudents.length > 0) {
-                flashcardElement.classList.remove('is-flipped');
-                setTimeout(() => {
-                    currentIndex = (currentIndex + 1) % filteredStudents.length;
-                    updateFlashcard();
-                }, 600);
-            }
-        });
-
-        prevButton.addEventListener('click', (event) => {
-            event.stopPropagation();
-            if (filteredStudents.length > 0) {
-                flashcardElement.classList.remove('is-flipped');
-                setTimeout(() => {
-                    currentIndex = (currentIndex - 1 + filteredStudents.length) % filteredStudents.length;
-                    updateFlashcard();
-                }, 600);
-            }
-        });
-
-        periodSelect.addEventListener('change', (event) => {
-            const selectedPeriod = event.target.value;
-            fetchStudents(selectedPeriod);
-        });
-
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchStudents('All');
-        });
-    </script>
+</script>
 </body>
 </html>
