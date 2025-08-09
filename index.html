@@ -114,27 +114,7 @@
         let filteredStudents = [];
         let currentIndex = 0;
 
-        const base64toBlob = (base64Data, contentType) => {
-            const sliceSize = 1024;
-            const byteCharacters = atob(base64Data);
-            const bytesLength = byteCharacters.length;
-            const slicesCount = Math.ceil(bytesLength / sliceSize);
-            const byteArrays = new Array(slicesCount);
-
-            for (let sliceIndex = 0; sliceIndex < slicesCount; ++sliceIndex) {
-                const begin = sliceIndex * sliceSize;
-                const end = Math.min(begin + sliceSize, bytesLength);
-
-                const bytes = new Array(end - begin);
-                for (let offset = begin, i = 0; offset < end; ++i, ++offset) {
-                    bytes[i] = byteCharacters[offset].charCodeAt(0);
-                }
-                byteArrays[sliceIndex] = new Uint8Array(bytes);
-            }
-            return new Blob(byteArrays, { type: contentType });
-        };
-
-        const updateFlashcard = () => {
+        const updateFlashcard = async () => {
             const photoElement = document.getElementById('student-photo');
             const nameElement = document.getElementById('student-name');
             const funFactElement = document.getElementById('fun-fact');
@@ -160,17 +140,21 @@
 
             const student = filteredStudents[currentIndex];
             
+            // Handle inconsistent name fields
             nameElement.textContent = student.name || student.preferredName || "Unknown Name";
             funFactElement.textContent = student.funFacts || student.funFact || "N/A";
             experienceElement.textContent = student.experience || "N/A";
 
-            // ====================================================================
-            // New logic: Convert base64 to Blob and create a temporary URL
-            // ====================================================================
+            // Use fetch to handle base64 data more reliably
             if (student.photo && student.photo.startsWith('data:')) {
+                photoElement.src = "https://placehold.co/400x400/eeeeee/333333?text=Loading..."; // Set a loading placeholder
                 try {
-                    const [mimeType, base64Data] = student.photo.split(';base64,');
-                    const blob = base64toBlob(base64Data, mimeType.split(':')[1]);
+                    // Use fetch to get the blob from the data URL
+                    const response = await fetch(student.photo);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const blob = await response.blob();
                     photoElement.src = URL.createObjectURL(blob);
                     photoElement.onerror = () => {
                         console.error("Blob URL failed to load. The image data might be corrupt.");
@@ -189,7 +173,6 @@
             } else {
                 photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=No+Photo";
             }
-            // ====================================================================
         };
 
         const fetchStudents = async (period) => {
