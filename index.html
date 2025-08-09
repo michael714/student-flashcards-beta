@@ -1,304 +1,265 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Flashcard App</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            color: #1f2937;
-        }
-        .container {
-            max-width: 800px;
-        }
-        .card-container {
-            perspective: 1000px;
-        }
-        .flashcard {
-            width: 100%;
-            height: 500px;
-            position: relative;
-            transform-style: preserve-3d;
-            transition: transform 0.6s;
-            cursor: pointer;
-        }
-        .flashcard.is-flipped {
-            transform: rotateY(180deg);
-        }
-        .flashcard-face {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            backface-visibility: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 2rem;
-            background-color: #ffffff;
-            border-radius: 2rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        }
-        .flashcard-back {
-            transform: rotateY(180deg);
-        }
-        .flashcard-image {
-            width: 100%;
-            max-width: 250px;
-            height: auto;
-            border-radius: 1.5rem;
-            object-fit: cover;
-        }
-        .btn {
-            @apply px-6 py-3 font-semibold rounded-full shadow-lg transition-all duration-300 transform hover:scale-105;
-        }
-        .btn-primary {
-            @apply bg-indigo-600 text-white hover:bg-indigo-700;
-        }
-        .modal {
-            display: none;
-            background-color: rgba(255,255,255,0.8);
-            backdrop-filter: blur(5px);
-        }
-        .modal-content {
-            @apply bg-white p-8 rounded-xl shadow-2xl;
-        }
-    </style>
-</head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import {
+  getAuth,
+  signInWithCustomToken,
+  signInAnonymously,
+  onAuthStateChanged
+} from 'firebase/auth';
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  collection,
+  query,
+  onSnapshot,
+  getDocs,
+  where,
+  addDoc
+} from 'firebase/firestore';
 
-    <!-- Main App Content -->
-    <div id="flashcard-app" class="container mx-auto p-8 bg-gray-50 rounded-3xl shadow-2xl text-center">
-        <header class="mb-12">
-            <h1 class="text-5xl font-bold text-indigo-700 mb-2">Student Flashcards</h1>
-            <p class="text-lg text-gray-600">Click a card to flip it and reveal details.</p>
-        </header>
+// Tailwind CSS is automatically included in this environment.
 
-        <main>
-            <!-- Loading and Error State -->
-            <div id="loading" class="flex flex-col items-center justify-center p-8">
-                <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-                <p class="text-gray-600 text-xl">Loading student data...</p>
-            </div>
-            
-            <div id="no-data" class="hidden text-center text-gray-600 p-8">
-                <p class="text-xl">No student profiles found. Please add students using the entry app.</p>
-            </div>
+function App() {
+  const [students, setStudents] = useState([]);
+  const [periods, setPeriods] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState('All');
+  const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState('');
 
-            <!-- Flashcard Section -->
-            <div id="flashcard-section" class="hidden">
-                <div class="card-container mb-8">
-                    <div id="flashcard-card" class="flashcard">
-                        <div id="flashcard-front" class="flashcard-face">
-                            <img id="student-photo-front" class="flashcard-image" src="" alt="Student photo">
-                            <h2 id="student-name" class="text-4xl font-bold text-gray-800 mt-4"></h2>
-                            <p id="student-class" class="text-gray-600 text-xl"></p>
-                        </div>
-                        <div id="flashcard-back" class="flashcard-face">
-                             <img id="student-photo-back" class="flashcard-image" src="" alt="Student photo">
-                            <h3 id="student-back-name" class="text-2xl font-bold text-gray-800 mt-4"></h3>
-                            <div class="space-y-4 text-left mt-4">
-                                <div>
-                                    <p class="font-bold text-gray-700">Fun Fact:</p>
-                                    <p id="fun-facts-back" class="text-gray-600"></p>
-                                </div>
-                                <div>
-                                    <p class="font-bold text-gray-700">Experience:</p>
-                                    <p id="experience-back" class="text-gray-600"></p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+  // Firebase globals from the environment
+  const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+  const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+  const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
 
-                <!-- Navigation Buttons -->
-                <div class="flex justify-center space-x-4">
-                    <button id="prev-btn" class="btn btn-primary disabled:opacity-50">Previous</button>
-                    <button id="next-btn" class="btn btn-primary disabled:opacity-50">Next</button>
-                </div>
-            </div>
-        </main>
-        
-        <!-- Custom Modal UI for critical errors -->
-        <div id="modal" class="modal fixed inset-0 z-50 overflow-auto flex items-center justify-center">
-            <div class="modal-content w-full max-w-md">
-                <h3 class="text-xl font-bold text-gray-800 mb-4">When you're ready...</h3>
-                <p id="modal-message" class="text-gray-900 mb-6"></p>
-                <div class="flex justify-center">
-                    <button onclick="hideModal()" class="modal-close-btn px-6 py-3 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700">Start</button>
-                </div>
-            </div>
-        </div>
-    </div>
+  useEffect(() => {
+    // 1. Initialize Firebase and authenticate the user
+    let unsubscribe = () => {};
+    const initFirebase = async () => {
+      try {
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-    <!-- Firebase SDK Imports & Main Script -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, getDocs, doc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Sign in the user
+        if (initialAuthToken) {
+          await signInWithCustomToken(auth, initialAuthToken);
+        } else {
+          await signInAnonymously(auth);
+        }
 
-        // Global variables for Firebase services
-        let app;
-        let db;
-        let auth;
-        
-        let studentData = [];
-        let currentIndex = 0;
+        onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            setUserId(user.uid);
+            console.log('Firebase user authenticated:', user.uid);
 
-        window.onload = async function() {
-            // DOM elements
-            const loadingScreen = document.getElementById('loading');
-            const flashcardSection = document.getElementById('flashcard-section');
-            const noDataMessage = document.getElementById('no-data');
-            const flashcardCard = document.getElementById('flashcard-card');
-            const prevBtn = document.getElementById('prev-btn');
-            const nextBtn = document.getElementById('next-btn');
-            
-            // Student Card elements
-            const studentPhotoFront = document.getElementById('student-photo-front');
-            const studentPhotoBack = document.getElementById('student-photo-back');
-            const studentName = document.getElementById('student-name');
-            const studentClass = document.getElementById('student-class');
-            const studentBackName = document.getElementById('student-back-name');
-            const funFactsBack = document.getElementById('fun-facts-back');
-            const experienceBack = document.getElementById('experience-back');
+            // 2. Sample data to seed the database if it's empty
+            const studentsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'students');
+            const studentsSnapshot = await getDocs(studentsRef);
 
-            // IMPORTANT: You MUST replace the content below with your actual Firebase config.
+            if (studentsSnapshot.empty) {
+              const sampleStudents = [
+                {
+                  name: 'Elias Finch',
+                  photoUrl: 'https://placehold.co/400x400/007bff/ffffff?text=Elias',
+                  funFact: 'Can solve a Rubik\'s Cube in under a minute.',
+                  experience: 'Has been programming since he was 12.',
+                  period: 'Period 1'
+                },
+                {
+                  name: 'Luna Vance',
+                  photoUrl: 'https://placehold.co/400x400/e83e8c/ffffff?text=Luna',
+                  funFact: 'Loves to write poetry in her free time.',
+                  experience: 'Expert in front-end web development.',
+                  period: 'Period 1'
+                },
+                {
+                  name: 'James Cole',
+                  photoUrl: 'https://placehold.co/400x400/28a745/ffffff?text=James',
+                  funFact: 'Won a regional chess tournament last year.',
+                  experience: 'Strong background in data analysis.',
+                  period: 'Period 2'
+                },
+                {
+                  name: 'Ava Chen',
+                  photoUrl: 'https://placehold.co/400x400/ffc107/000000?text=Ava',
+                  funFact: 'Is learning to play the ukulele.',
+                  experience: 'Specializes in machine learning algorithms.',
+                  period: 'Period 2'
+                },
+              ];
 
-                const firebaseConfig = {
-                apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
-                authDomain: "student-flashcards.firebaseapp.com",
-                projectId: "student-flashcards",
-                storageBucket: "student-flashcards.firebasestorage.app",
-                messagingSenderId: "737854832974",
-                appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
-                };
-            
-            // This is the same app ID used in the Student Entry App
-            const appId = 'student-entry-app-2025';
-
-            if (!firebaseConfig.projectId) {
-                showModal("Error: Firebase configuration is missing. Please add your config to the code and redeploy.");
-                console.error("Firebase Initialization Error: The firebaseConfig object is empty or missing 'projectId'.");
-                return;
+              for (const student of sampleStudents) {
+                await addDoc(studentsRef, student);
+              }
+              console.log('Sample data added to Firestore.');
             }
-            
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                // Auth state change listener
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        console.log("User signed in with ID:", user.uid);
-                        await fetchStudentData();
-                    } else {
-                        try {
-                           console.log("No user signed in. Attempting anonymous sign-in.");
-                           await signInAnonymously(auth);
-                        } catch (error) {
-                            console.error("Error during anonymous sign-in:", error);
-                            showModal("Error: Sign-in failed. Please check your Firebase Authentication settings.");
-                        }
-                    }
+
+            // 3. Listen for real-time changes to the flashcards
+            const getStudents = () => {
+              let q;
+              if (selectedPeriod === 'All') {
+                q = query(studentsRef);
+              } else {
+                q = query(studentsRef, where('period', '==', selectedPeriod));
+              }
+
+              unsubscribe = onSnapshot(q, (querySnapshot) => {
+                const studentsArray = [];
+                const allPeriods = new Set();
+                querySnapshot.forEach((doc) => {
+                  const studentData = { id: doc.id, ...doc.data() };
+                  studentsArray.push(studentData);
+                  allPeriods.add(studentData.period);
                 });
-            } catch (e) {
-                console.error("Error initializing Firebase:", e);
-                showModal("Critical Error: Firebase initialization failed. Please check your config and redeploy.");
-            }
-
-            // Function to fetch student data from Firestore
-            async function fetchStudentData() {
-                try {
-                    const collectionPath = `artifacts/${appId}/public/data/student-profiles`;
-                    const q = query(collection(db, collectionPath));
-                    const querySnapshot = await getDocs(q);
-
-                    studentData = [];
-                    querySnapshot.forEach((doc) => {
-                        studentData.push(doc.data());
-                    });
-                    
-                    if (studentData.length > 0) {
-                        console.log("Student data fetched successfully:", studentData);
-                        displayStudentCard(currentIndex);
-                        flashcardSection.classList.remove('hidden');
-                    } else {
-                        noDataMessage.classList.remove('hidden');
-                    }
-                } catch (e) {
-                    console.error("Error fetching documents:", e);
-                    showModal("Error: Could not fetch student data. Please check your Firestore rules.");
-                } finally {
-                    loadingScreen.classList.add('hidden');
-                }
-            }
-
-            // Function to display a student card
-            function displayStudentCard(index) {
-                const student = studentData[index];
-                if (student) {
-                    studentName.textContent = student.preferredName || student.name;
-                    studentClass.textContent = student.className;
-                    studentPhotoFront.src = student.photo;
-                    studentPhotoBack.src = student.photo;
-                    studentBackName.textContent = student.preferredName || student.name;
-                    funFactsBack.textContent = student.funFacts;
-                    experienceBack.textContent = student.experience;
-                    
-                    // Reset card flip and disable/enable buttons
-                    flashcardCard.classList.remove('is-flipped');
-                    prevBtn.disabled = index === 0;
-                    nextBtn.disabled = index === studentData.length - 1;
-                }
-            }
-
-            // Event listener for card flip
-            flashcardCard.addEventListener('click', () => {
-                flashcardCard.classList.toggle('is-flipped');
-            });
-
-            // Event listener for previous button
-            prevBtn.addEventListener('click', () => {
-                if (currentIndex > 0) {
-                    currentIndex--;
-                    displayStudentCard(currentIndex);
-                }
-            });
-
-            // Event listener for next button
-            nextBtn.addEventListener('click', () => {
-                if (currentIndex < studentData.length - 1) {
-                    currentIndex++;
-                    displayStudentCard(currentIndex);
-                }
-            });
-
-            // Function to show a custom modal for critical errors
-            window.showModal = (message) => {
-                const modal = document.getElementById('modal');
-                const modalMessage = document.getElementById('modal-message');
-                if (modal && modalMessage) {
-                    modalMessage.textContent = message;
-                    modal.style.display = 'flex';
-                }
+                
+                // Sort students by name for consistent display
+                studentsArray.sort((a, b) => a.name.localeCompare(b.name));
+                
+                setStudents(studentsArray);
+                setPeriods(['All', ...Array.from(allPeriods).sort()]);
+                setLoading(false);
+                setCurrentStudentIndex(0); // Reset to the first card when period changes
+                setIsFlipped(false); // Reset card flip state
+              });
             };
+            getStudents();
+          } else {
+            console.log('No user is signed in.');
+            setLoading(false);
+          }
+        });
 
-            // Function to hide the custom modal
-            window.hideModal = () => {
-                const modal = document.getElementById('modal');
-                if (modal) {
-                    modal.style.display = 'none';
-                }
-            };
-        };
-    </script>
-</body>
-</html>
+      } catch (error) {
+        console.error('Error initializing Firebase or fetching data:', error);
+        setLoading(false);
+      }
+    };
+    initFirebase();
+    
+    // Clean up the subscription on unmount
+    return () => unsubscribe();
+  }, [selectedPeriod, appId, firebaseConfig, initialAuthToken]);
+
+  const handleNext = () => {
+    setIsFlipped(false);
+    setTimeout(() => {
+      setCurrentStudentIndex((prevIndex) => (prevIndex + 1) % students.length);
+    }, 300); // Match animation duration
+  };
+
+  const handlePrev = () => {
+    setIsFlipped(false);
+    setTimeout(() => {
+      setCurrentStudentIndex((prevIndex) => (prevIndex - 1 + students.length) % students.length);
+    }, 300); // Match animation duration
+  };
+
+  const handleCardClick = () => {
+    setIsFlipped(!isFlipped);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-100">
+        <p className="text-xl text-gray-700">Loading flashcards...</p>
+      </div>
+    );
+  }
+
+  const currentStudent = students[currentStudentIndex];
+
+  return (
+    <div className="bg-slate-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans text-gray-800">
+      <div className="w-full max-w-2xl text-center mb-8">
+        <h1 className="text-4xl font-bold mb-2">Student Flashcards</h1>
+        <p className="text-sm text-gray-500">User ID: {userId}</p>
+      </div>
+
+      <div className="w-full max-w-sm mb-6">
+        <label htmlFor="period-select" className="block text-sm font-medium text-gray-700 mb-1">
+          Select Period
+        </label>
+        <select
+          id="period-select"
+          value={selectedPeriod}
+          onChange={(e) => setSelectedPeriod(e.target.value)}
+          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2"
+        >
+          {periods.map((period) => (
+            <option key={period} value={period}>
+              {period}
+            </option>
+          ))}
+        </select>
+      </div>
+      
+      {students.length > 0 ? (
+        <>
+          {/* Flashcard container with flip animation */}
+          <div
+            className={`w-full max-w-sm h-96 transform-style-3d relative transition-transform duration-300 ${isFlipped ? 'rotate-y-180' : ''}`}
+            onClick={handleCardClick}
+          >
+            {/* Front of the card (photo) */}
+            <div className="absolute w-full h-full backface-hidden bg-white rounded-xl shadow-lg flex items-center justify-center overflow-hidden cursor-pointer">
+              {currentStudent.photoUrl && (
+                <img
+                  src={currentStudent.photoUrl}
+                  alt={`Photo of ${currentStudent.name}`}
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
+
+            {/* Back of the card (details) */}
+            <div className="absolute w-full h-full backface-hidden bg-white rounded-xl shadow-lg rotate-y-180 p-6 flex flex-col justify-center items-center text-center cursor-pointer">
+              <h2 className="text-3xl font-bold mb-4">{currentStudent.name}</h2>
+              <div className="text-lg space-y-3">
+                <p><strong>Fun Fact:</strong> {currentStudent.funFact}</p>
+                <p><strong>Experience:</strong> {currentStudent.experience}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation buttons */}
+          <div className="flex justify-between w-full max-w-sm mt-8">
+            <button
+              onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+              className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-200 transition-colors duration-200"
+            >
+              Previous
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleNext(); }}
+              className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-200 transition-colors duration-200"
+            >
+              Next
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="w-full max-w-sm h-96 bg-white rounded-xl shadow-lg flex items-center justify-center">
+          <p className="text-lg text-gray-500">No students found for this period.</p>
+        </div>
+      )}
+
+      {/* Add some basic styles for the card flip effect */}
+      <style>{`
+        .transform-style-3d {
+          transform-style: preserve-3d;
+        }
+        .backface-hidden {
+          backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+          transform: rotateY(180deg);
+        }
+      `}</style>
+    </div>
+  );
+}
+
+export default App;
