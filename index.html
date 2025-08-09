@@ -38,7 +38,7 @@
     </style>
 </head>
 <body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4 font-sans text-gray-800">
-    
+
     <div class="w-full max-w-2xl text-center mb-8">
         <h1 class="text-4xl font-bold mb-2">Student Flashcards</h1>
     </div>
@@ -49,7 +49,12 @@
             Select Period
         </label>
         <select id="period-select" class="block w-full rounded-md border-gray-300 shadow-sm p-2 text-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <!-- Options will be populated by JavaScript -->
+            <option value="All">All</option>
+            <option value="Period 1">Period 1</option>
+            <option value="Period 2">Period 2</option>
+            <option value="Period 3">Period 3</option>
+            <option value="Period 4">Period 4</option>
+            <option value="Period 6">Period 6</option>
         </select>
     </div>
 
@@ -90,6 +95,7 @@
         // IMPORTANT: Paste your Firebase config here
         // ====================================================================
 
+
         const firebaseConfig = {
         apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
         authDomain: "student-flashcards.firebaseapp.com",
@@ -108,7 +114,6 @@
         const nextButton = document.getElementById('next-btn');
         const prevButton = document.getElementById('prev-btn');
         const periodSelect = document.getElementById('period-select');
-        let students = [];
         let filteredStudents = [];
         let currentIndex = 0;
 
@@ -152,44 +157,8 @@
                 // Display error message to user
                 document.getElementById('student-photo').src = "https://placehold.co/400x400/ff0000/ffffff?text=Error";
                 document.getElementById('student-name').textContent = "Error loading data.";
-                document.getElementById('fun-fact').textContent = "Please check your Firebase config.";
+                document.getElementById('fun-fact').textContent = "Please check your Firebase config and collection name.";
                 document.getElementById('experience').textContent = "";
-            }
-        };
-
-        const populatePeriods = (allStudents) => {
-            const periods = new Set(['All']);
-            allStudents.forEach(student => periods.add(student.period));
-            
-            periodSelect.innerHTML = ''; // Clear existing options
-            
-            periods.forEach(period => {
-                const option = document.createElement('option');
-                option.value = period;
-                option.textContent = period;
-                periodSelect.appendChild(option);
-            });
-        };
-
-        const initApp = async () => {
-            try {
-                const studentsCollection = collection(db, firestoreCollectionName);
-                const querySnapshot = await getDocs(studentsCollection);
-                students = querySnapshot.docs.map(doc => doc.data());
-
-                if (students.length > 0) {
-                    populatePeriods(students);
-                    await fetchStudents('All');
-                } else {
-                    // No students in the database
-                    document.getElementById('student-photo').src = "https://placehold.co/400x400/cccccc/000000?text=No+Data";
-                    document.getElementById('student-name').textContent = "Database is empty.";
-                    document.getElementById('fun-fact').textContent = "Add some data to Firestore.";
-                    document.getElementById('experience').textContent = "";
-                }
-
-            } catch (e) {
-                console.error("Error initializing app: ", e);
             }
         };
 
@@ -223,11 +192,13 @@
         });
 
         periodSelect.addEventListener('change', (event) => {
-            fetchStudents(event.target.value);
+            const selectedPeriod = event.target.value;
+            fetchStudents(selectedPeriod);
         });
 
         // Initialize the app on page load
-        initApp();
+        // Initial fetch for "All" students
+        fetchStudents('All');
     </script>
 </body>
 </html>
