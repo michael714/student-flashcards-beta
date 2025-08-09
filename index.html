@@ -146,10 +146,34 @@
                 if (period === 'All') {
                     q = query(studentsCollection);
                 } else {
-                    // Extract the number from the string "Period 1" as a STRING.
-                    const periodString = period.split(' ')[1];
-                    // Use the string in the query.
-                    q = query(studentsCollection, where("period", "==", periodString));
+                    let periodValue;
+                    switch(period) {
+                        case 'Period 1':
+                            periodValue = "1";
+                            break;
+                        case 'Period 2':
+                            periodValue = "2";
+                            break;
+                        case 'Period 3':
+                            periodValue = "3";
+                            break;
+                        case 'Period 4':
+                            periodValue = "4";
+                            break;
+                        case 'Period 6':
+                            periodValue = "6";
+                            break;
+                        default:
+                            periodValue = null; // Should not happen with current dropdown
+                    }
+                    
+                    if (periodValue !== null) {
+                        // The crucial change: query with the string value
+                        q = query(studentsCollection, where("period", "==", periodValue));
+                    } else {
+                        // If for some reason the value is not valid, query for nothing.
+                        q = query(collection(db, "a_non_existent_collection_to_return_nothing"));
+                    }
                 }
                 
                 const querySnapshot = await getDocs(q);
