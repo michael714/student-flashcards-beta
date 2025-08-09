@@ -97,10 +97,21 @@
     </div>
 
     <!-- Navigation -->
-    <div class="flex justify-between items-center">
-        <button id="prev-btn" class="bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-600 transition-colors">Previous</button>
+    <div class="flex justify-between items-center mb-4">
+        <button id="prev-btn" class="bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-600 transition-colors">
+            Previous
+        </button>
         <p id="card-counter" class="text-gray-600 font-medium">0 / 0</p>
-        <button id="next-btn" class="bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-600 transition-colors">Next</button>
+        <button id="next-btn" class="bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-600 transition-colors">
+            Next
+        </button>
+    </div>
+
+    <!-- Delete Button -->
+    <div class="w-full text-center mt-4">
+        <button id="delete-btn" class="bg-red-500 text-white text-sm font-semibold py-2 px-6 rounded-lg hover:bg-red-600 transition-colors shadow">
+            Delete Card
+        </button>
     </div>
 </div>
 
@@ -141,7 +152,7 @@
     async function fetchStudents() {
         try {
             const snapshot = await db.collection(firestoreCollectionName).orderBy("timestamp", "desc").get();
-            allStudents = snapshot.docs.map(doc => doc.data());
+            allStudents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             console.log(`Found ${allStudents.length} students in the database.`);
             filterAndDisplayStudents();
         } catch (error) {
@@ -221,9 +232,40 @@
         }
     });
 
+    // Wire the delete button (after the DOM loads)
+    document.getElementById('delete-btn').addEventListener('click', deleteCurrentCard);
+
+    async function deleteCurrentCard() {
+        if (filteredStudents.length === 0) return;
+
+        const student = filteredStudents[currentIndex];
+        const displayName = student.preferredName || student.givenName || 'this student';
+
+        const ok = window.confirm(`Delete ${displayName}'s card? This cannot be undone.`);
+        if (!ok) return;
+
+        try {
+            // Delete from Firestore
+            await db.collection(firestoreCollectionName).doc(student.id).delete();
+
+            // Remove from local arrays
+            const id = student.id;
+            allStudents = allStudents.filter(s => s.id !== id);
+            filteredStudents = filteredStudents.filter(s => s.id !== id);
+
+            // Adjust index if necessary
+            if (currentIndex >= filteredStudents.length) currentIndex = 0;
+
+            // Refresh UI
+            updateDisplay();
+        } catch (err) {
+            console.error('Error deleting card:', err);
+            alert('Sorry, the delete failed. Check console for details.');
+        }
+    }
+
     // --- Initial Load ---
     fetchStudents();
-
 </script>
 </body>
 </html>
