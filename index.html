@@ -94,19 +94,25 @@
         // ====================================================================
         // IMPORTANT: Paste your Firebase config here
         // ====================================================================
-
-
         const firebaseConfig = {
-        apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
-        authDomain: "student-flashcards.firebaseapp.com",
-        projectId: "student-flashcards",
-        storageBucket: "student-flashcards.firebasestorage.app",
-        messagingSenderId: "737854832974",
-        appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
-
-        const firestoreCollectionName = "YOUR_COLLECTION_NAME"; // e.g., "students"
+        const firestoreCollectionName = "artifacts"; // e.g., "students"
         // ====================================================================
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
+  authDomain: "student-flashcards.firebaseapp.com",
+  projectId: "student-flashcards",
+  storageBucket: "student-flashcards.firebasestorage.app",
+  messagingSenderId: "737854832974",
+  appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
+};
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -124,8 +130,15 @@
                 document.getElementById('student-name').textContent = "No students in this period.";
                 document.getElementById('fun-fact').textContent = "";
                 document.getElementById('experience').textContent = "";
+                // Hide navigation buttons if there are no cards to flip
+                nextButton.style.display = 'none';
+                prevButton.style.display = 'none';
                 return;
             }
+
+            // Show navigation buttons
+            nextButton.style.display = 'inline-flex';
+            prevButton.style.display = 'inline-flex';
 
             const student = filteredStudents[currentIndex];
             document.getElementById('student-photo').src = student.photoUrl;
@@ -159,6 +172,8 @@
                 document.getElementById('student-name').textContent = "Error loading data.";
                 document.getElementById('fun-fact').textContent = "Please check your Firebase config and collection name.";
                 document.getElementById('experience').textContent = "";
+                nextButton.style.display = 'none';
+                prevButton.style.display = 'none';
             }
         };
 
@@ -196,9 +211,10 @@
             fetchStudents(selectedPeriod);
         });
 
-        // Initialize the app on page load
-        // Initial fetch for "All" students
-        fetchStudents('All');
+        // Initialize the app on page load by fetching all students
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchStudents('All');
+        });
     </script>
 </body>
 </html>
