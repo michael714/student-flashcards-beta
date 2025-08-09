@@ -114,54 +114,81 @@
         let filteredStudents = [];
         let currentIndex = 0;
 
+        const base64toBlob = (base64Data, contentType) => {
+            const sliceSize = 1024;
+            const byteCharacters = atob(base64Data);
+            const bytesLength = byteCharacters.length;
+            const slicesCount = Math.ceil(bytesLength / sliceSize);
+            const byteArrays = new Array(slicesCount);
+
+            for (let sliceIndex = 0; sliceIndex < slicesCount; ++sliceIndex) {
+                const begin = sliceIndex * sliceSize;
+                const end = Math.min(begin + sliceSize, bytesLength);
+
+                const bytes = new Array(end - begin);
+                for (let offset = begin, i = 0; offset < end; ++i, ++offset) {
+                    bytes[i] = byteCharacters[offset].charCodeAt(0);
+                }
+                byteArrays[sliceIndex] = new Uint8Array(bytes);
+            }
+            return new Blob(byteArrays, { type: contentType });
+        };
+
         const updateFlashcard = () => {
             const photoElement = document.getElementById('student-photo');
             const nameElement = document.getElementById('student-name');
             const funFactElement = document.getElementById('fun-fact');
             const experienceElement = document.getElementById('experience');
 
+            // Revoke previous object URL to prevent memory leaks
+            if (photoElement.src.startsWith('blob:')) {
+                URL.revokeObjectURL(photoElement.src);
+            }
+
             if (filteredStudents.length === 0) {
-                // Display a message if no students are found
                 photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=No+Students+Found";
                 nameElement.textContent = "No students in this period.";
                 funFactElement.textContent = "";
                 experienceElement.textContent = "";
-                // Hide navigation buttons if there are no cards to flip
                 nextButton.style.display = 'none';
                 prevButton.style.display = 'none';
                 return;
             }
 
-            // Show navigation buttons
             nextButton.style.display = 'inline-flex';
             prevButton.style.display = 'inline-flex';
 
             const student = filteredStudents[currentIndex];
-
-            // ====================================================================
-            // The key updates: More explicit image handling with console logs
-            // ====================================================================
-            // Reset the src and onerror to prevent weird state issues
-            photoElement.src = '';
-            photoElement.onerror = () => {
-                photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=No+Photo";
-                console.error("Image failed to load, setting placeholder.");
-            };
-
-            if (student.photo) {
-                console.log("Found 'photo' field. Setting image source from base64 data.");
-                photoElement.src = student.photo;
-            } else if (student.photoUrl) {
-                console.log("Found 'photoUrl' field. Setting image source from URL.");
-                photoElement.src = student.photoUrl;
-            } else {
-                console.log("No photo field found. Setting placeholder image.");
-                photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=No+Photo";
-            }
             
             nameElement.textContent = student.name || student.preferredName || "Unknown Name";
             funFactElement.textContent = student.funFacts || student.funFact || "N/A";
             experienceElement.textContent = student.experience || "N/A";
+
+            // ====================================================================
+            // New logic: Convert base64 to Blob and create a temporary URL
+            // ====================================================================
+            if (student.photo && student.photo.startsWith('data:')) {
+                try {
+                    const [mimeType, base64Data] = student.photo.split(';base64,');
+                    const blob = base64toBlob(base64Data, mimeType.split(':')[1]);
+                    photoElement.src = URL.createObjectURL(blob);
+                    photoElement.onerror = () => {
+                        console.error("Blob URL failed to load. The image data might be corrupt.");
+                        photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=Corrupt+Image";
+                    };
+                } catch (e) {
+                    console.error("Failed to process base64 image data:", e);
+                    photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=Invalid+Data";
+                }
+            } else if (student.photoUrl) {
+                photoElement.src = student.photoUrl;
+                photoElement.onerror = () => {
+                    console.error("External image URL failed to load.");
+                    photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=No+Photo";
+                };
+            } else {
+                photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=No+Photo";
+            }
             // ====================================================================
         };
 
@@ -169,29 +196,17 @@
             try {
                 const studentsCollection = collection(db, firestoreCollectionName);
                 let q;
-
                 if (period === 'All') {
                     q = query(studentsCollection);
                 } else {
                     let periodValue;
                     switch(period) {
-                        case 'Period 1':
-                            periodValue = "1";
-                            break;
-                        case 'Period 2':
-                            periodValue = "2";
-                            break;
-                        case 'Period 3':
-                            periodValue = "3";
-                            break;
-                        case 'Period 4':
-                            periodValue = "4";
-                            break;
-                        case 'Period 6':
-                            periodValue = "6";
-                            break;
-                        default:
-                            periodValue = null; // Should not happen with current dropdown
+                        case 'Period 1': periodValue = "1"; break;
+                        case 'Period 2': periodValue = "2"; break;
+                        case 'Period 3': periodValue = "3"; break;
+                        case 'Period 4': periodValue = "4"; break;
+                        case 'Period 6': periodValue = "6"; break;
+                        default: periodValue = null;
                     }
                     
                     if (periodValue !== null) {
@@ -256,7 +271,6 @@
             fetchStudents(selectedPeriod);
         });
 
-        // Initialize the app on page load by fetching all students
         document.addEventListener('DOMContentLoaded', () => {
             fetchStudents('All');
         });
