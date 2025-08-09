@@ -95,17 +95,18 @@
         // IMPORTANT: PASTE YOUR FIREBASE CONFIGURATION AND COLLECTION NAME HERE
         // ====================================================================
 
-            const firebaseConfig = {
-            apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
-            authDomain: "student-flashcards.firebaseapp.com",
-            projectId: "student-flashcards",
-            storageBucket: "student-flashcards.firebasestorage.app",
-            messagingSenderId: "737854832974",
-            appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
-            };
-        
-        const firestoreCollectionName = "artifacts";
-        
+        const firebaseConfig = {
+        apiKey: "AIzaSyD7jyL6ZehEBPXCvzhDI59rO-Gtry36bwk",
+        authDomain: "student-flashcards.firebaseapp.com",
+        projectId: "student-flashcards",
+        storageBucket: "student-flashcards.firebasestorage.app",
+        messagingSenderId: "737854832974",
+        appId: "1:737854832974:web:536a0574d8868bc84d1e1f"
+        };
+
+        const firestoreCollectionName = "artifacts"; // e.g., "students"
+        // ====================================================================
+
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const flashcardElement = document.getElementById('flashcard');
@@ -114,7 +115,6 @@
         const periodSelect = document.getElementById('period-select');
         let filteredStudents = [];
         let currentIndex = 0;
-
 
         const updateFlashcard = () => {
             if (filteredStudents.length === 0) {
@@ -163,7 +163,7 @@
                 // Display error message to user
                 document.getElementById('student-photo').src = "https://placehold.co/400x400/ff0000/ffffff?text=Error";
                 document.getElementById('student-name').textContent = "Error loading data.";
-                document.getElementById('fun-fact').textContent = "Please check your Firebase config and collection name.";
+                document.getElementById('fun-fact').textContent = "Please check your Firebase config and collection name. Also, ensure your Firebase security rules allow read access.";
                 document.getElementById('experience').textContent = "";
                 nextButton.style.display = 'none';
                 prevButton.style.display = 'none';
