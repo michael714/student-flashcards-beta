@@ -63,7 +63,7 @@
         <div id="flashcard" class="card cursor-pointer">
             <!-- Card Front -->
             <div id="card-front" class="card-face bg-white">
-                <img id="student-photo" src="" alt="Student Photo" class="w-full h-full object-cover rounded-xl" onerror="this.src='https://placehold.co/400x400/cccccc/000000?text=No+Photo'">
+                <img id="student-photo" src="https://placehold.co/400x400/cccccc/000000?text=Loading..." alt="Student Photo" class="w-full h-full object-cover rounded-xl">
             </div>
             <!-- Card Back -->
             <div id="card-back" class="card-face card-back bg-white p-6 flex-col text-center">
@@ -115,12 +115,17 @@
         let currentIndex = 0;
 
         const updateFlashcard = () => {
+            const photoElement = document.getElementById('student-photo');
+            const nameElement = document.getElementById('student-name');
+            const funFactElement = document.getElementById('fun-fact');
+            const experienceElement = document.getElementById('experience');
+
             if (filteredStudents.length === 0) {
                 // Display a message if no students are found
-                document.getElementById('student-photo').src = "https://placehold.co/400x400/cccccc/000000?text=No+Students+Found";
-                document.getElementById('student-name').textContent = "No students in this period.";
-                document.getElementById('fun-fact').textContent = "";
-                document.getElementById('experience').textContent = "";
+                photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=No+Students+Found";
+                nameElement.textContent = "No students in this period.";
+                funFactElement.textContent = "";
+                experienceElement.textContent = "";
                 // Hide navigation buttons if there are no cards to flip
                 nextButton.style.display = 'none';
                 prevButton.style.display = 'none';
@@ -133,22 +138,30 @@
 
             const student = filteredStudents[currentIndex];
 
-            // Set the photo source, falling back to a placeholder if none is available
-            const photoElement = document.getElementById('student-photo');
+            // ====================================================================
+            // The key updates: More explicit image handling with console logs
+            // ====================================================================
+            // Reset the src and onerror to prevent weird state issues
+            photoElement.src = '';
+            photoElement.onerror = () => {
+                photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=No+Photo";
+                console.error("Image failed to load, setting placeholder.");
+            };
+
             if (student.photo) {
+                console.log("Found 'photo' field. Setting image source from base64 data.");
                 photoElement.src = student.photo;
             } else if (student.photoUrl) {
+                console.log("Found 'photoUrl' field. Setting image source from URL.");
                 photoElement.src = student.photoUrl;
             } else {
+                console.log("No photo field found. Setting placeholder image.");
                 photoElement.src = "https://placehold.co/400x400/cccccc/000000?text=No+Photo";
             }
             
-            // ====================================================================
-            // The key update: Fallback logic for inconsistent field names
-            // ====================================================================
-            document.getElementById('student-name').textContent = student.name || student.preferredName || "Unknown Name";
-            document.getElementById('fun-fact').textContent = student.funFacts || student.funFact || "";
-            document.getElementById('experience').textContent = student.experience || "";
+            nameElement.textContent = student.name || student.preferredName || "Unknown Name";
+            funFactElement.textContent = student.funFacts || student.funFact || "N/A";
+            experienceElement.textContent = student.experience || "N/A";
             // ====================================================================
         };
 
