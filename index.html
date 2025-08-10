@@ -9,13 +9,9 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
+        body { font-family: 'Inter', sans-serif; }
         /* Styles for the 3D card flip effect */
-        .card-container {
-            perspective: 1000px;
-        }
+        .card-container { perspective: 1000px; }
         .card {
             width: 100%;
             height: 400px;
@@ -24,9 +20,7 @@
             transition: transform 0.6s;
             cursor: pointer;
         }
-        .card.is-flipped {
-            transform: rotateY(180deg);
-        }
+        .card.is-flipped { transform: rotateY(180deg); }
         .card-face {
             position: absolute;
             width: 100%;
@@ -39,9 +33,7 @@
             border-radius: 1rem;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        .card-front {
-            background-color: #f3f4f6; /* gray-200 */
-        }
+        .card-front { background-color: #f3f4f6; /* gray-200 */ }
         .card-back {
             background-color: #ffffff;
             transform: rotateY(180deg);
@@ -83,7 +75,21 @@
                 </div>
                 <!-- Card Back (Details) -->
                 <div class="card-face card-back">
+                    <!-- Big display name stays as the prominent header -->
                     <h3 id="student-name" class="text-2xl font-bold text-gray-800 mb-2"></h3>
+
+                    <!-- NEW: Labeled Preferred / Given name lines -->
+                    <div class="w-full mb-3 text-gray-700 text-sm">
+                        <div class="flex justify-between">
+                            <span class="font-semibold">Preferred:</span>
+                            <span id="student-preferred-name" class="text-gray-800"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="font-semibold">Given:</span>
+                            <span id="student-given-name" class="text-gray-800"></span>
+                        </div>
+                    </div>
+
                     <p class="text-sm text-gray-500 mb-4" id="student-class"></p>
                     <div class="text-left w-full">
                         <strong class="text-gray-700">Fun Fact:</strong>
@@ -145,12 +151,12 @@
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
     const noStudentsMessage = document.getElementById('no-students-message');
-    const flashcardArea = document.getElementById('flashcard-area');
     const cardContainer = document.querySelector('.card-container');
 
     // --- Fetch Students from Firestore ---
     async function fetchStudents() {
         try {
+            // NOTE: This pulls full documents, including givenName, if present.
             const snapshot = await db.collection(firestoreCollectionName).orderBy("timestamp", "desc").get();
             allStudents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             console.log(`Found ${allStudents.length} students in the database.`);
@@ -196,11 +202,16 @@
         const student = filteredStudents[currentIndex];
         
         // Update card content
-        document.getElementById('student-photo').src = student.photo;
-        document.getElementById('student-name').textContent = student.preferredName || student.givenName;
+        document.getElementById('student-photo').src = student.photo || '';
+        // Big title favors preferredName, falls back to givenName, then placeholder
+        document.getElementById('student-name').textContent = student.preferredName || student.givenName || '(no name)';
+        // NEW: labeled lines
+        document.getElementById('student-preferred-name').textContent = student.preferredName || '—';
+        document.getElementById('student-given-name').textContent = student.givenName || '—';
+
         document.getElementById('student-class').textContent = `Period ${student.period} - ${student.className}`;
-        document.getElementById('student-fun-fact').textContent = student.funFact;
-        document.getElementById('student-experience').textContent = student.experience;
+        document.getElementById('student-fun-fact').textContent = student.funFact || '';
+        document.getElementById('student-experience').textContent = student.experience || '';
 
         // Update experience title
         const experienceTitle = document.getElementById('experience-title');
